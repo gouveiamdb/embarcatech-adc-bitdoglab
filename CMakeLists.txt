@@ -35,7 +35,8 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(embarcatech-adc-bitdoglab embarcatech-adc-bitdoglab.c )
+add_executable(embarcatech-adc-bitdoglab embarcatech-adc-bitdoglab.c
+embarcatech-adc-bitdoglab.c inc/ssd1306.c)
 
 pico_set_program_name(embarcatech-adc-bitdoglab "embarcatech-adc-bitdoglab")
 pico_set_program_version(embarcatech-adc-bitdoglab "0.1")
