@@ -5,6 +5,9 @@
 #include "inc/ssd1306.h"
 #include "inc/font.h"
 
+#define LED_RED 11
+#define LED_GREEN 12
+#define LED_BLUE 13
 #define JOYSTICK_X 26
 #define JOYSTICK_Y 27
 #define JOYSTICK_BTN 22
@@ -12,6 +15,7 @@
 #define I2C_SDA 14
 #define I2C_SCL 15
 #define endereco 0x3C
+
 
 void init_adc()
 {
@@ -35,7 +39,9 @@ int main()
     init_adc();
     init_i2c();   
 
-   
+    uint16_t adc_x;
+    uint16_t adc_y;
+
 
     while (true) {
         adc_select_input(0);
