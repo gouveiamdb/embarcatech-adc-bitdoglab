@@ -249,18 +249,6 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t max, bool invert) {
              break;
      }
  
-     // Desenha as linhas divisórias
-     ssd1306_line(&ssd, 3, 25, 123, 25, cor);
-     ssd1306_line(&ssd, 3, 37, 123, 37, cor);
- 
-     // Desenha as linhas verticais
-     ssd1306_line(&ssd, 44, 37, 44, 60, cor);
-     ssd1306_line(&ssd, 84, 37, 84, 60, cor);
-     
-     // Mostra os valores do ADC
-     ssd1306_draw_string(&ssd, adc_x, 8, 52);
-     ssd1306_draw_string(&ssd, adc_y, 49, 52);
- 
      ssd1306_send_data(&ssd);
  }
  
@@ -304,8 +292,8 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t max, bool invert) {
         }
 
         // Cálculo da posição do quadrado com inversão do eixo X
-        uint8_t square_x = calculate_position(adc_value_x, 64 - 8, true);  // Inverte X
-        uint8_t square_y = calculate_position(adc_value_y, 128 - 8, false); // Y normal
+        uint8_t square_x = calculate_position(adc_value_x, 64, true);  // Inverte X
+        uint8_t square_y = calculate_position(adc_value_y, 128, false); // Y normal
 
         // Limpa o display e desenha o layout base
         ssd1306_fill(&ssd, false);
