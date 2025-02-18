@@ -1,4 +1,4 @@
-# README - Projeto: Controle de Joystick e Display SSD1306 🎮📟
+# Projeto: Controle de Joystick e Display SSD1306 🎮📟
 
 ## **Descrição do Projeto**
 Este projeto implementa o controle de um joystick para:
