@@ -9,6 +9,7 @@
 #define LED_RED 11
 #define LED_GREEN 12
 #define LED_BLUE 13
+#define BUTTON_A 5
 #define JOYSTICK_X 26
 #define JOYSTICK_Y 27
 #define JOYSTICK_BTN 22
@@ -17,6 +18,31 @@
 #define I2C_SCL 15
 #define endereco 0x3C
 
+volatile bool led_green_state = false;
+volatile uint8_t border_style = 0;
+const uint32_t DEBOUCE_DELAY = 200000;
+
+void gpio_callback(uint gpio, uint32_t events)
+{
+    printf("Botão pressionado\n");
+}
+
+void init_gpio()
+{
+    gpio_init(JOYSTICK_BTN);
+    gpio_set_dir(JOYSTICK_BTN, GPIO_IN);
+    gpio_pull_up(JOYSTICK_BTN);
+    gpio_set_irq_enabled_with_callback(JOYSTICK_BTN, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
+    
+    gpio_init(BUTTON_A);
+    gpio_set_dir(BUTTON_A, GPIO_IN);
+    gpio_pull_up(BUTTON_A);
+    gpio_set_irq_enabled(BUTTON_A, GPIO_IRQ_EDGE_FALL, true);
+
+    gpio_init(LED_GREEN);
+    gpio_set_dir(LED_GREEN, GPIO_OUT);
+    gpio_put(LED_GREEN, 1);
+}
 
 void init_adc()
 {
@@ -27,7 +53,7 @@ void init_adc()
 
 void init_i2c()
 {
-    i2c_init(I2C_PORT, 400 * 1000);
+    i2c_init(I2C_PORT, 400000);
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA);
@@ -52,6 +78,7 @@ void init_pwm()
 int main()
 {
     stdio_init_all();
+    init_gpio();
     init_adc();
     init_i2c();
     init_pwm();
