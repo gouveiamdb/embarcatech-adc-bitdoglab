@@ -19,12 +19,20 @@
 #define endereco 0x3C
 
 volatile bool led_green_state = false;
+volatile bool pwm_enable = true;
 volatile uint8_t border_style = 0;
 const uint32_t DEBOUCE_DELAY = 200000;
 
 void gpio_callback(uint gpio, uint32_t events)
 {
-    printf("Botão pressionado\n");
+    if (gpio == JOYSTICK_BTN) {
+        led_green_state = !led_green_state;
+        gpio_put(LED_GREEN, led_green_state);
+        border_style = (border_style + 1) % 3;
+        }
+        else if (gpio == BUTTON_A) {
+            pwm_enable = !pwm_enable;
+    }
 }
 
 void init_gpio()
