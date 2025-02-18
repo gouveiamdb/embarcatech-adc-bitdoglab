@@ -26,8 +26,8 @@
  
  // Definições dos pinos GPIO
  #define LED_RED 11        // LED vermelho do RGB
- #define LED_GREEN 12      // LED verde do RGB
- #define LED_BLUE 13       // LED azul do RGB
+ #define LED_BLUE 12       // LED azul do RGB
+ #define LED_GREEN 13      // LED verde do RGB
  #define BUTTON_A 5        // Botão A da placa
  #define JOYSTICK_X 26     // Eixo X do joystick (ADC0)
  #define JOYSTICK_Y 27     // Eixo Y do joystick (ADC1)
@@ -51,42 +51,50 @@
   * Converte o valor do ADC (0-4095) para um valor PWM proporcional
   * considerando a distância do centro (2048)
   */
- uint16_t calculate_pwm(uint16_t value) {
-    int16_t diff = abs(value - 2048);
-    return (diff > 100) ? diff * 2 : 0; // LEDs apagam se a diferença for pequena
+uint16_t calculate_pwm(uint16_t value) {
+   int16_t diff = abs(value - 2048);
+   return (diff > 50) ? diff * 2 : 0; // LEDs apagam se a diferença for menor ou igual a 50
 }
+
 
 void draw_square(ssd1306_t *ssd, uint8_t x, uint8_t y, uint8_t size) {
     ssd1306_rect(ssd, x, y, size, size, true, true); // Retângulo preenchido
 }
 
-uint8_t calculate_position(uint16_t adc_value, uint8_t min, uint8_t max) {
-    return (adc_value * (max - min)) / 4095 + min; // Mapeia ADC para a faixa de movimento
+
+uint8_t calculate_position(uint16_t adc_value, uint8_t max, bool invert) {
+    // Inverte o valor se necessário
+    if (invert) {
+        adc_value = 4095 - adc_value;
+    }
+    
+    // Calcula a posição com limites seguros
+    uint8_t pos = (adc_value * (max - 8)) / 4095;
+    return pos;
 }
+
 
  /**
   * Callback para tratamento de interrupções GPIO
   * Implementa debounce e controle dos botões
   */
  void gpio_callback(uint gpio, uint32_t events) {
-     uint32_t current_time = time_us_32();
-     
-     // Implementação do debounce
-     if (current_time - last_button_time < DEBOUNCE_DELAY) {
-         return;
-     }
-     
-     last_button_time = current_time;
- 
-     // Tratamento dos botões
-     if (gpio == JOYSTICK_BTN) {
-         led_green_state = !led_green_state;
-         gpio_put(LED_GREEN, led_green_state);
-         border_style = (border_style + 1) % 3;
-     } else if (gpio == BUTTON_A) {
-         pwm_enabled = !pwm_enabled;
-     }
- }
+    uint32_t current_time = time_us_32();
+    
+    if (current_time - last_button_time < DEBOUNCE_DELAY) {
+        return;
+    }
+    
+    last_button_time = current_time;
+
+    if (gpio == JOYSTICK_BTN) {
+        led_green_state = !led_green_state;
+        gpio_put(LED_GREEN, led_green_state);  // Este controle está correto
+        border_style = (border_style + 1) % 3;
+    } else if (gpio == BUTTON_A) {
+        pwm_enabled = !pwm_enabled;
+    }
+}
  
  /**
   * Inicializa os pinos GPIO
@@ -103,7 +111,7 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t min, uint8_t max) {
      gpio_init(BUTTON_A);
      gpio_set_dir(BUTTON_A, GPIO_IN);
      gpio_pull_up(BUTTON_A);
-     gpio_set_irq_enabled(BUTTON_A, GPIO_IRQ_EDGE_FALL, true);
+     gpio_set_irq_enabled_with_callback(BUTTON_A, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
  
      // Configuração do LED verde
      gpio_init(LED_GREEN);
@@ -217,12 +225,6 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t min, uint8_t max) {
      ssd1306_line(&ssd, 3, 25, 123, 25, cor);
      ssd1306_line(&ssd, 3, 37, 123, 37, cor);
  
-     // Desenha os textos fixos
-     ssd1306_draw_string(&ssd, "CEPEDI   TIC37", 8, 6);
-     ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 16);
-     ssd1306_draw_string(&ssd, "ADC   JOYSTICK", 10, 28);
-     ssd1306_draw_string(&ssd, "X    Y    PB", 20, 41);
- 
      // Desenha as linhas verticais
      ssd1306_line(&ssd, 44, 37, 44, 60, cor);
      ssd1306_line(&ssd, 84, 37, 84, 60, cor);
@@ -255,26 +257,50 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t min, uint8_t max) {
  
      // Loop principal
      while (true) {
-        // Leitura dos valores do ADC
         adc_select_input(0);
         adc_value_x = adc_read();
         adc_select_input(1);
         adc_value_y = adc_read();
-        
-        // Controle dos LEDs
-        pwm_set_gpio_level(LED_RED, calculate_pwm(adc_value_x));
-        pwm_set_gpio_level(LED_BLUE, calculate_pwm(adc_value_y));
-    
-        // Calcula a posição do quadrado
-        uint8_t square_x = calculate_position(adc_value_x, 0, 120);
-        uint8_t square_y = calculate_position(adc_value_y, 0, 56);
-    
+
+        // Conversão para string dos valores ADC
+        sprintf(str_x, "%d", adc_value_x);
+        sprintf(str_y, "%d", adc_value_y);
+
+        // Controle dos LEDs via PWM
+        if (pwm_enabled) {
+            pwm_set_gpio_level(LED_RED, calculate_pwm(adc_value_x));
+            pwm_set_gpio_level(LED_BLUE, calculate_pwm(adc_value_y));
+        } else {
+            pwm_set_gpio_level(LED_RED, 0);
+            pwm_set_gpio_level(LED_BLUE, 0);
+        }
+
+        // Cálculo da posição do quadrado com inversão do eixo X
+        uint8_t square_x = calculate_position(adc_value_x, WIDTH - 8, true);  // Inverte X
+        uint8_t square_y = calculate_position(adc_value_y, HEIGHT - 8, false); // Y normal
+
+        // Limpa o display e desenha o layout base
+        ssd1306_fill(&ssd, false);
+
+        // Desenha a borda atual
+        switch (border_style) {
+            case 0:
+                ssd1306_rect(&ssd, 0, 0, WIDTH, HEIGHT, true, false);
+                break;
+            case 1:
+                draw_dotted_rect(&ssd, 0, 0, WIDTH, HEIGHT);
+                break;
+            case 2:
+                draw_double_rect(&ssd, 0, 0, WIDTH, HEIGHT);
+                break;
+        }
+
+        // Desenha o quadrado na posição calculada
+        draw_square(&ssd, square_x, square_y, 8);
+
         // Atualiza o display
-        ssd1306_fill(&ssd, false);  // Limpa o display
-        draw_square(&ssd, square_x, square_y, 8);  // Desenha o quadrado
-        ssd1306_send_data(&ssd);  // Atualiza o display
-    
-        sleep_ms(50);  // Delay para estabilização
+        ssd1306_send_data(&ssd);
+
+        sleep_ms(20);
     }
-    
- }
+}
