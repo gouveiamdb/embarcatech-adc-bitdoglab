@@ -51,11 +51,15 @@ target_link_libraries(embarcatech-adc-bitdoglab
 # Add the standard include files to the build
 target_include_directories(embarcatech-adc-bitdoglab PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        inc
 )
 
 # Add any user requested libraries
 target_link_libraries(embarcatech-adc-bitdoglab 
-        
+        pico_stdlib
+        hardware_adc
+        hardware_i2c
+        hardware_pwm        
         )
 
 pico_add_extra_outputs(embarcatech-adc-bitdoglab)
