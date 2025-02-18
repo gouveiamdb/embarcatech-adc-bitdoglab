@@ -52,10 +52,18 @@
   * considerando a distância do centro (2048)
   */
  uint16_t calculate_pwm(uint16_t value) {
-     int16_t diff = abs(value - 2048);
-     return diff > 2047 ? 0 : diff * 2; // Garante que não ultrapasse o limite
- }
- 
+    int16_t diff = abs(value - 2048);
+    return (diff > 100) ? diff * 2 : 0; // LEDs apagam se a diferença for pequena
+}
+
+void draw_square(ssd1306_t *ssd, uint8_t x, uint8_t y, uint8_t size) {
+    ssd1306_rect(ssd, x, y, size, size, true, true); // Retângulo preenchido
+}
+
+uint8_t calculate_position(uint16_t adc_value, uint8_t min, uint8_t max) {
+    return (adc_value * (max - min)) / 4095 + min; // Mapeia ADC para a faixa de movimento
+}
+
  /**
   * Callback para tratamento de interrupções GPIO
   * Implementa debounce e controle dos botões
@@ -247,28 +255,26 @@
  
      // Loop principal
      while (true) {
-         // Leitura dos valores do ADC
-         adc_select_input(0);
-         adc_value_x = adc_read();
-         adc_select_input(1);
-         adc_value_y = adc_read();
-         
-         // Conversão para string
-         sprintf(str_x, "%d", adc_value_x);
-         sprintf(str_y, "%d", adc_value_y);
-     
-         // Controle dos LEDs via PWM
-         if (pwm_enabled) {
-             pwm_set_gpio_level(LED_RED, calculate_pwm(adc_value_x));
-             pwm_set_gpio_level(LED_BLUE, calculate_pwm(adc_value_y));
-         } else {
-             pwm_set_gpio_level(LED_RED, 0);
-             pwm_set_gpio_level(LED_BLUE, 0);
-         }
-     
-         // Atualização do display
-         update_display(str_x, str_y);
-     
-         sleep_ms(50);  // Delay para estabilização
-     }
+        // Leitura dos valores do ADC
+        adc_select_input(0);
+        adc_value_x = adc_read();
+        adc_select_input(1);
+        adc_value_y = adc_read();
+        
+        // Controle dos LEDs
+        pwm_set_gpio_level(LED_RED, calculate_pwm(adc_value_x));
+        pwm_set_gpio_level(LED_BLUE, calculate_pwm(adc_value_y));
+    
+        // Calcula a posição do quadrado
+        uint8_t square_x = calculate_position(adc_value_x, 0, 120);
+        uint8_t square_y = calculate_position(adc_value_y, 0, 56);
+    
+        // Atualiza o display
+        ssd1306_fill(&ssd, false);  // Limpa o display
+        draw_square(&ssd, square_x, square_y, 8);  // Desenha o quadrado
+        ssd1306_send_data(&ssd);  // Atualiza o display
+    
+        sleep_ms(50);  // Delay para estabilização
+    }
+    
  }
