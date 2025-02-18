@@ -60,7 +60,7 @@
  */
 uint16_t calculate_pwm(uint16_t value) {
     const uint16_t center = 2048;
-    const uint16_t deadzone = 100; // Zona morta para evitar flutuações no centro
+    const uint16_t deadzone = 200; // Zona morta para evitar flutuações no centro
     
     // Calcula a distância do centro
     int32_t diff = abs((int32_t)value - center);
