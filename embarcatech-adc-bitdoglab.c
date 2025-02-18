@@ -28,7 +28,8 @@ ssd1306_t ssd;
 bool cor = true;
 
 uint16_t calculate_pwm(uint16_t value) {
-    return abs(value - 2048) * 2;
+    int16_t diff = abs(value - 2048);
+    return diff > 2047 ? 0 : diff * 2; // Garante que não ultrapasse o limite
 }
 
 void gpio_callback(uint gpio, uint32_t events) {
@@ -105,6 +106,32 @@ void init_display()
     ssd1306_send_data(&ssd);
 }
 
+void draw_dotted_rect(ssd1306_t *ssd, uint8_t x, uint8_t y, uint8_t width, uint8_t height) {
+    for (uint8_t i = x; i < x + width; i++) {
+        if ((i - x) % 2 == 0) {
+            ssd1306_pixel(ssd, i, y, true);                // Linha superior
+            ssd1306_pixel(ssd, i, y + height - 1, true);   // Linha inferior
+        }
+    }
+    for (uint8_t j = y; j < y + height; j++) {
+        if ((j - y) % 2 == 0) {
+            ssd1306_pixel(ssd, x, j, true);                // Linha esquerda
+            ssd1306_pixel(ssd, x + width - 1, j, true);    // Linha direita
+        }
+    }
+}
+
+void draw_double_rect(ssd1306_t *ssd, uint8_t x, uint8_t y, uint8_t width, uint8_t height) {
+    // Retângulo externo
+    ssd1306_rect(ssd, x, y, width, height, true, false);
+
+    // Retângulo interno (se houver espaço suficiente)
+    if (width > 4 && height > 4) {
+        ssd1306_rect(ssd, x + 2, y + 2, width - 4, height - 4, true, false);
+    }
+}
+
+
 void update_display(char* adc_x, char* adc_y) {
     ssd1306_fill(&ssd, !cor); 
 
@@ -113,10 +140,10 @@ void update_display(char* adc_x, char* adc_y) {
             ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor); 
             break;
         case 1:
-            ssd1306_draw_dotted_rect(&ssd, 3, 3, 122, 60);
+            draw_dotted_rect(&ssd, 3, 3, 122, 60);
             break;
         case 2:
-            ssd1306_draw_double_rect(&ssd, 3, 3, 122, 60);
+            draw_double_rect(&ssd, 3, 3, 122, 60);         // Retângulo interno
             break;
     }
 
