@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = 'build/embarcatech-adc-bitdoglab.uf2'
+elf = 'build/embarcatech-adc-bitdoglab.elf'
