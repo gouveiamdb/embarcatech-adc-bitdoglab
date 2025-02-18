@@ -27,6 +27,10 @@ const uint32_t DEBOUNCE_DELAY = 200000;
 ssd1306_t ssd;
 bool cor = true;
 
+uint16_t calculate_pwm(uint16_t value) {
+    return abs(value - 2048) * 2;
+}
+
 void gpio_callback(uint gpio, uint32_t events) {
     uint32_t current_time = time_us_32();
     
@@ -104,7 +108,18 @@ void init_display()
 void update_display(char* adc_x, char* adc_y) {
     ssd1306_fill(&ssd, !cor); 
 
-    ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor);
+    switch (border_style) {
+        case 0:
+            ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor); 
+            break;
+        case 1:
+            ssd1306_draw_dotted_rect(&ssd, 3, 3, 122, 60);
+            break;
+        case 2:
+            ssd1306_draw_double_rect(&ssd, 3, 3, 122, 60);
+            break;
+    }
+
     ssd1306_line(&ssd, 3, 25, 123, 25, cor);
     ssd1306_line(&ssd, 3, 37, 123, 37, cor);
 
@@ -117,8 +132,8 @@ void update_display(char* adc_x, char* adc_y) {
     ssd1306_line(&ssd, 84, 37, 84, 60, cor);
     
     ssd1306_draw_string(&ssd, adc_x, 8, 52);
-    ssd1306_draw_string(&ssd, adc_y, 49, 64);   
-  
+    ssd1306_draw_string(&ssd, adc_y, 49, 52); 
+
     ssd1306_send_data(&ssd);
 }
 
@@ -146,23 +161,20 @@ int main()
         // Converte valores para string
         sprintf(str_x, "%d", adc_value_x);
         sprintf(str_y, "%d", adc_value_y);
-
+    
         // Controle dos LEDs via PWM
         if (pwm_enabled) {
-            // Calcula valores PWM baseados na distância do centro (2048)
-            uint16_t red_pwm = abs(adc_value_x - 2048) * 2;
-            uint16_t blue_pwm = abs(adc_value_y - 2048) * 2;
-            
-            pwm_set_gpio_level(LED_RED, red_pwm);
-            pwm_set_gpio_level(LED_BLUE, blue_pwm);
+            pwm_set_gpio_level(LED_RED, calculate_pwm(adc_value_x));
+            pwm_set_gpio_level(LED_BLUE, calculate_pwm(adc_value_y));
         } else {
             pwm_set_gpio_level(LED_RED, 0);
             pwm_set_gpio_level(LED_BLUE, 0);
         }
-
+    
         // Atualiza o display
         update_display(str_x, str_y);
-
+    
         sleep_ms(50);  // Delay para estabilização
     }
+    
 }
