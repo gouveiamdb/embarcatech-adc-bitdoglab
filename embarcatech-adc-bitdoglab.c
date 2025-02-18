@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "hardware/adc.h"
@@ -26,8 +27,6 @@ const uint32_t DEBOUNCE_DELAY = 200000;
 ssd1306_t ssd;
 bool cor = true;
 
-uint8_t display_buffer[WIDTH * HEIGHT / 8] = {0};
-
 void gpio_callback(uint gpio, uint32_t events) {
     uint32_t current_time = time_us_32();
     
@@ -41,8 +40,6 @@ void gpio_callback(uint gpio, uint32_t events) {
         led_green_state = !led_green_state;
         gpio_put(LED_GREEN, led_green_state);
         border_style = (border_style + 1) % 3;
-        update_display();
-
     } else if (gpio == BUTTON_A) {
         pwm_enabled = !pwm_enabled;
     }
@@ -61,7 +58,6 @@ void init_gpio() {
 
     gpio_init(LED_GREEN);
     gpio_set_dir(LED_GREEN, GPIO_OUT);
-    gpio_put(LED_GREEN, 1);
 }
 
 void init_adc()
@@ -100,31 +96,30 @@ void init_display()
     ssd1306_init(&ssd, WIDTH, HEIGHT, false, endereco, I2C_PORT);
     ssd1306_config(&ssd);
     ssd1306_send_data(&ssd);
-}
 
-void display_clear()
-{
     ssd1306_fill(&ssd, false);
     ssd1306_send_data(&ssd);
 }
 
-void update_display() {
-    ssd1306_fill(&ssd, !cor); // Limpa o display
-    ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor); // Desenha um retângulo
-    ssd1306_line(&ssd, 3, 25, 123, 25, cor); // Desenha uma linha
-    ssd1306_line(&ssd, 3, 37, 123, 37, cor); // Desenha uma linha   
-    ssd1306_draw_string(&ssd, "CEPEDI   TIC37", 8, 6); // Desenha uma string
-    ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 16); // Desenha uma string
-    ssd1306_draw_string(&ssd, "ADC   JOYSTICK", 10, 28); // Desenha uma string 
-    ssd1306_draw_string(&ssd, "X    Y    PB", 20, 41); // Desenha uma string    
-    ssd1306_line(&ssd, 44, 37, 44, 60, cor); // Desenha uma linha vertical         
-    ssd1306_draw_string(&ssd, adc_x, 8, 52); // Desenha uma string     
-    ssd1306_line(&ssd, 84, 37, 84, 60, cor); // Desenha uma linha vertical      
-    ssd1306_draw_string(&ssd, adc_y, 49, 52); // Desenha uma string   
-    ssd1306_rect(&ssd, 52, 90, 8, 8, cor, !gpio_get(JOYSTICK_BTN)); // Desenha um retângulo  
-    ssd1306_rect(&ssd, 52, 102, 8, 8, cor, !gpio_get(BUTTON_A)); // Desenha um retângulo    
-    ssd1306_rect(&ssd, 52, 114, 8, 8, cor, !cor); // Desenha um retângulo       
-    ssd1306_send_data(&ssd); // Atualiza o display
+void update_display(char* adc_x, char* adc_y) {
+    ssd1306_fill(&ssd, !cor); 
+
+    ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor);
+    ssd1306_line(&ssd, 3, 25, 123, 25, cor);
+    ssd1306_line(&ssd, 3, 37, 123, 37, cor);
+
+    ssd1306_draw_string(&ssd, "CEPEDI   TIC37", 8, 6);
+    ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 16);
+    ssd1306_draw_string(&ssd, "ADC   JOYSTICK", 10, 28);
+    ssd1306_draw_string(&ssd, "X    Y    PB", 20, 41);
+
+    ssd1306_line(&ssd, 44, 37, 44, 60, cor);
+    ssd1306_line(&ssd, 84, 37, 84, 60, cor);
+    
+    ssd1306_draw_string(&ssd, adc_x, 8, 52);
+    ssd1306_draw_string(&ssd, adc_y, 49, 64);   
+  
+    ssd1306_send_data(&ssd);
 }
 
 int main()
@@ -136,31 +131,38 @@ int main()
     init_pwm();
     init_display();
 
+    uint16_t adc_value_x;
+    uint16_t adc_value_y;
+    char str_x[5];
+    char str_y[5];
 
     while (true) {
+        // Leitura do ADC
         adc_select_input(0);
-        uint16_t adc_x = adc_read();
-
+        adc_value_x = adc_read();
         adc_select_input(1);
-        uint16_t adc_y = adc_read();
+        adc_value_y = adc_read();
         
-        uint slice_red = pwm_gpio_to_slice_num(LED_RED);
-        uint slice_blue = pwm_gpio_to_slice_num(LED_BLUE);
+        // Converte valores para string
+        sprintf(str_x, "%d", adc_value_x);
+        sprintf(str_y, "%d", adc_value_y);
 
-        pwm_set_gpio_level(LED_RED, adc_x);
-        pwm_set_gpio_level(LED_BLUE, adc_y);
-
-        printf("Joystick, eixo X: %d, eixo Y: %d\n", adc_x, adc_y);
-
+        // Controle dos LEDs via PWM
         if (pwm_enabled) {
-            pwm_set_gpio_level(LED_RED, adc_x);
-            pwm_set_gpio_level(LED_BLUE, adc_y);
+            // Calcula valores PWM baseados na distância do centro (2048)
+            uint16_t red_pwm = abs(adc_value_x - 2048) * 2;
+            uint16_t blue_pwm = abs(adc_value_y - 2048) * 2;
+            
+            pwm_set_gpio_level(LED_RED, red_pwm);
+            pwm_set_gpio_level(LED_BLUE, blue_pwm);
         } else {
             pwm_set_gpio_level(LED_RED, 0);
             pwm_set_gpio_level(LED_BLUE, 0);
         }
-        
 
-        sleep_ms(20);
+        // Atualiza o display
+        update_display(str_x, str_y);
+
+        sleep_ms(50);  // Delay para estabilização
     }
 }
