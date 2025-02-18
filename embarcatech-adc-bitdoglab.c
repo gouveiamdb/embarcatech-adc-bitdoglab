@@ -46,11 +46,6 @@
  ssd1306_t ssd;                           // Estrutura do display
  bool cor = true;                         // Cor atual do display (true = branco)
  
- /**
-  * Calcula o valor PWM baseado no valor do ADC
-  * Converte o valor do ADC (0-4095) para um valor PWM proporcional
-  * considerando a distância do centro (2048)
-  */
 /**
  * Calcula o valor PWM baseado no valor do ADC
  * Quando o joystick está no centro (2048), o LED fica apagado
@@ -90,7 +85,13 @@ void draw_square(ssd1306_t *ssd, uint8_t x, uint8_t y, uint8_t size) {
     ssd1306_rect(ssd, x, y, size, size, true, true); // Retângulo preenchido
 }
 
-
+/**
+ * Calcula a posição de um elemento no display com base no valor ADC.
+ * @param adc_value: Valor do ADC (0-4095)
+ * @param max: Valor máximo permitido (limite do display)
+ * @param invert: Inverte o valor (eixo invertido, se true)
+ * @return: Posição mapeada no intervalo permitido
+ */
 uint8_t calculate_position(uint16_t adc_value, uint8_t max, bool invert) {
     // Inverte o valor se necessário
     if (invert) {
@@ -102,10 +103,12 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t max, bool invert) {
     return pos;
 }
 
- /**
-  * Callback para tratamento de interrupções GPIO
-  * Implementa debounce e controle dos botões
-  */
+/**
+ * Callback para tratamento de interrupções GPIO
+ * Implementa debounce e controle dos botões:
+ * - JOYSTICK_BTN alterna o LED verde e muda o estilo da borda
+ * - BUTTON_A ativa/desativa os LEDs RGB
+ */
  void gpio_callback(uint gpio, uint32_t events) {
     uint32_t current_time = time_us_32();
     
