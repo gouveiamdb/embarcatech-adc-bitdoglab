@@ -229,33 +229,6 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t max, bool invert) {
      }
  }
  
- /**
-  * Atualiza o conteúdo do display
-  * Desenha a interface com valores do ADC e bordas
-  */
- void update_display(char* adc_x, char* adc_y) {
-     ssd1306_fill(&ssd, !cor);
- 
-     // Desenha a borda de acordo com o estilo selecionado
-     switch (border_style) {
-         case 0:
-             ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor);
-             break;
-         case 1:
-             draw_dotted_rect(&ssd, 3, 3, 122, 60);
-             break;
-         case 2:
-             draw_double_rect(&ssd, 3, 3, 122, 60);
-             break;
-     }
- 
-     ssd1306_send_data(&ssd);
- }
- 
- /**
-  * Função principal
-  * Implementa o loop principal do programa
-  */
  int main() {
      // Inicializações
      stdio_init_all();
