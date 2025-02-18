@@ -4,6 +4,7 @@
 #include "hardware/adc.h"
 #include "inc/ssd1306.h"
 #include "inc/font.h"
+#include "hardware/pwm.h"
 
 #define LED_RED 11
 #define LED_GREEN 12
@@ -33,14 +34,27 @@ void init_i2c()
     gpio_pull_up(I2C_SCL);
 }
 
+void init_pwm()
+{
+    gpio_set_function(LED_RED, GPIO_FUNC_PWM);
+    gpio_set_function(LED_BLUE, GPIO_FUNC_PWM);
+
+    uint slice_red = pwm_gpio_to_slice_num(LED_RED);
+    uint slice_blue = pwm_gpio_to_slice_num(LED_BLUE);
+
+    pwm_set_wrap(slice_red, 4095);
+    pwm_set_wrap(slice_blue, 4095);
+
+    pwm_set_enabled(slice_red, true);
+    pwm_set_enabled(slice_blue, true);
+}
+
 int main()
 {
     stdio_init_all();
     init_adc();
-    init_i2c();   
-
-    uint16_t adc_x;
-    uint16_t adc_y;
+    init_i2c();
+    init_pwm();
 
 
     while (true) {
@@ -49,9 +63,14 @@ int main()
 
         adc_select_input(1);
         uint16_t adc_y = adc_read();
-                
-        printf("Joystick, eixo X: %d, eixo Y: %d\n", adc_x, adc_y);
+        
+        uint slice_red = pwm_gpio_to_slice_num(LED_RED);
+        uint slice_blue = pwm_gpio_to_slice_num(LED_BLUE);
 
+        pwm_set_gpio_level(LED_RED, adc_x);
+        pwm_set_gpio_level(LED_BLUE, adc_y);
+
+        printf("Joystick, eixo X: %d, eixo Y: %d\n", adc_x, adc_y);
 
         sleep_ms(100);
     }
