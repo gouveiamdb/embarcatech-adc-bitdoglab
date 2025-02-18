@@ -25,9 +25,9 @@
  #include "hardware/pwm.h"
  
  // Definições dos pinos GPIO
- #define LED_RED 11        // LED vermelho do RGB
+ #define LED_GREEN 11      // LED verde do RGB
  #define LED_BLUE 12       // LED azul do RGB
- #define LED_GREEN 13      // LED verde do RGB
+ #define LED_RED 13        // LED vermelho do RGB
  #define BUTTON_A 5        // Botão A da placa
  #define JOYSTICK_X 26     // Eixo X do joystick (ADC0)
  #define JOYSTICK_Y 27     // Eixo Y do joystick (ADC1)
@@ -51,9 +51,38 @@
   * Converte o valor do ADC (0-4095) para um valor PWM proporcional
   * considerando a distância do centro (2048)
   */
+/**
+ * Calcula o valor PWM baseado no valor do ADC
+ * Quando o joystick está no centro (2048), o LED fica apagado
+ * O brilho aumenta conforme o joystick se afasta do centro em qualquer direção
+ * @param value: valor do ADC (0-4095)
+ * @return: valor do PWM (0-4095)
+ */
 uint16_t calculate_pwm(uint16_t value) {
-   int16_t diff = abs(value - 2048);
-   return (diff > 50) ? diff * 2 : 0; // LEDs apagam se a diferença for menor ou igual a 50
+    const uint16_t center = 2048;
+    const uint16_t deadzone = 100; // Zona morta para evitar flutuações no centro
+    
+    // Calcula a distância do centro
+    int32_t diff = abs((int32_t)value - center);
+    
+    // Se estiver dentro da zona morta, mantém LED apagado
+    if (diff < deadzone) {
+        return 0;
+    }
+    
+    // Calcula o brilho proporcionalmente à distância do centro
+    // Subtrai a zona morta para ter uma transição suave
+    diff -= deadzone;
+    
+    // Mapeia o valor para 0-4095, considerando que a distância máxima é 2048 - deadzone
+    uint32_t pwm = (diff * 4095) / (2048 - deadzone);
+    
+    // Limita o valor máximo
+    if (pwm > 4095) {
+        pwm = 4095;
+    }
+    
+    return (uint16_t)pwm;
 }
 
 
@@ -72,7 +101,6 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t max, bool invert) {
     uint8_t pos = (adc_value * (max - 8)) / 4095;
     return pos;
 }
-
 
  /**
   * Callback para tratamento de interrupções GPIO
@@ -268,16 +296,16 @@ uint8_t calculate_position(uint16_t adc_value, uint8_t max, bool invert) {
 
         // Controle dos LEDs via PWM
         if (pwm_enabled) {
-            pwm_set_gpio_level(LED_RED, calculate_pwm(adc_value_x));
-            pwm_set_gpio_level(LED_BLUE, calculate_pwm(adc_value_y));
+            pwm_set_gpio_level(LED_RED, calculate_pwm(adc_value_x));   // Eixo X controla LED vermelho
+            pwm_set_gpio_level(LED_BLUE, calculate_pwm(adc_value_y));  // Eixo Y controla LED azul
         } else {
             pwm_set_gpio_level(LED_RED, 0);
             pwm_set_gpio_level(LED_BLUE, 0);
         }
 
         // Cálculo da posição do quadrado com inversão do eixo X
-        uint8_t square_x = calculate_position(adc_value_x, WIDTH - 8, true);  // Inverte X
-        uint8_t square_y = calculate_position(adc_value_y, HEIGHT - 8, false); // Y normal
+        uint8_t square_x = calculate_position(adc_value_x, 64 - 8, true);  // Inverte X
+        uint8_t square_y = calculate_position(adc_value_y, 128 - 8, false); // Y normal
 
         // Limpa o display e desenha o layout base
         ssd1306_fill(&ssd, false);
