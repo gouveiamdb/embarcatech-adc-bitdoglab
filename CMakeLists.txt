@@ -35,27 +35,28 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(embarcatech-adc-bitdoglab embarcatech-adc-bitdoglab.c )
+add_executable(embarcatech-adc-bitdoglab embarcatech-adc-bitdoglab.c
+embarcatech-adc-bitdoglab.c inc/ssd1306.c)
 
 pico_set_program_name(embarcatech-adc-bitdoglab "embarcatech-adc-bitdoglab")
 pico_set_program_version(embarcatech-adc-bitdoglab "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(embarcatech-adc-bitdoglab 0)
-pico_enable_stdio_usb(embarcatech-adc-bitdoglab 0)
-
-# Add the standard library to the build
-target_link_libraries(embarcatech-adc-bitdoglab
-        pico_stdlib)
+pico_enable_stdio_uart(embarcatech-adc-bitdoglab 1)
+pico_enable_stdio_usb(embarcatech-adc-bitdoglab 1)
 
 # Add the standard include files to the build
 target_include_directories(embarcatech-adc-bitdoglab PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        inc
 )
 
 # Add any user requested libraries
 target_link_libraries(embarcatech-adc-bitdoglab 
-        
+        pico_stdlib
+        hardware_adc
+        hardware_i2c
+        hardware_pwm       
         )
 
 pico_add_extra_outputs(embarcatech-adc-bitdoglab)
